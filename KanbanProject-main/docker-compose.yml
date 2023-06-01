@@ -1,0 +1,91 @@
+version: "3.9"
+services:
+  mysqlservice:
+    image: mysql:latest
+    ports:
+      - "3306:3306"
+    container_name: my-sql-container
+    networks:
+      - workflow
+    environment:
+      MYSQL_ROOT_PASSWORD: Negi@123
+      MYSQL_USERNAME: root
+      MYSQL_PASSWORD: Negi@123
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+
+  mongoservice:
+    image: mongo:latest
+    container_name: mongo-container
+    networks:
+      - workflow
+    ports:
+      - "27017:27017"
+
+  authenticationservice:
+    build: FinalProject/
+    networks:
+      - workflow
+    ports:
+      - "3033:3033"
+    depends_on:
+      - mysqlservice
+    restart: always
+
+  kanbanservice:
+    container_name: kanban-container
+    build: kanban/
+    networks:
+      - workflow
+    ports:
+      - "8007:8007"
+    depends_on:
+      - mongoservice
+      - rabbitmq
+    restart: always
+
+  eurekaservice:
+    container_name: eureka-container
+    build: EurekaServer/
+    ports:
+      - "8761:8761"
+    depends_on:
+      - mongoservice
+    environment:
+      eureka.client.serviceUrl.defaultZone: http://discovery:8761/eureka
+    restart: always
+
+  notificationservice:
+    container_name: notification-container
+    build: notification/
+    networks:
+      - workflow
+    ports:
+      - "8090:8090"
+    depends_on:
+      - mongoservice
+      - rabbitmq
+    restart: always
+
+  api-gateway-service:
+    container_name: api-gateway-container
+    build: APIGateway/
+    networks:
+      - workflow
+    ports:
+      - "8085:8085"
+    restart: always
+
+  rabbitmq:
+    image: rabbitmq:management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - ./rabbitmq/data:/var/lib/rabbitmq
+
+networks:
+  workflow:
+    driver: bridge
