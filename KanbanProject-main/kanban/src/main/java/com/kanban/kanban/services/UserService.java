@@ -57,7 +57,7 @@ public class UserService implements IUserService {
         if (userRepository.findById(user.getName()).isEmpty()) {
             EmployeeDTO employeeDTO = new EmployeeDTO(user.getName(), user.getPassword());
             System.out.println(user);
-            notificationProxy.sendRegistrationEmail(user.getEmail(),emailBody);
+//            notificationProxy.sendRegistrationEmail(user.getEmail(),emailBody);
             userProxy.addNewUser(employeeDTO);
 
             String message = "Welcome " + user.getName();

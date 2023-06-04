@@ -1,10 +1,10 @@
 version: "3.9"
 services:
-  mysqlservice:
+  mysql-service:
     image: mysql:latest
     ports:
       - "3306:3306"
-    container_name: my-sql-container
+    container_name: mysql-service
     networks:
       - workflow
     environment:
@@ -13,66 +13,27 @@ services:
       MYSQL_PASSWORD: Negi@123
       MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
 
-  mongoservice:
+  mongo-service:
     image: mongo:latest
-    container_name: mongo-container
+    container_name: mongo-service
     networks:
       - workflow
     ports:
       - "27017:27017"
 
-  authenticationservice:
-    build: FinalProject/
-    networks:
-      - workflow
-    ports:
-      - "3033:3033"
-    depends_on:
-      - mysqlservice
-      - eurekaservice
-    restart: always
-
-  kanbanservice:
-    container_name: kanban-container
-    build: kanban/
-    networks:
-      - workflow
-    ports:
-      - "8007:8007"
-    depends_on:
-      - mongoservice
-      - rabbitmq
-      - eurekaservice
-    restart: always
-
-  eurekaservice:
-    container_name: eureka-container
+  eureka-service:
+    container_name: eureka-service
     build: EurekaServer/
     ports:
       - "8761:8761"
-    depends_on:
-      - mongoservice
     environment:
       eureka.client.serviceUrl.defaultZone: http://discovery:8761/eureka
     restart: always
     networks:
       - workflow
 
-  notificationservice:
-    container_name: notification-container
-    build: notification/
-    networks:
-      - workflow
-    ports:
-      - "8090:8090"
-    depends_on:
-      - mongoservice
-      - rabbitmq
-      - eurekaservice
-    restart: always
-
   api-gateway-service:
-    container_name: api-gateway-container
+    container_name: api-gateway-service
     build: APIGateway/
     networks:
       - workflow
@@ -80,12 +41,65 @@ services:
       - "8085:8085"
     restart: always
 
-  rabbitmq:
-    container_name: rabbitmq-container
-    image: rabbitmq:latest
+  auth-service:
+    build: FinalProject/
+    container_name: auth-service
+    networks:
+      - workflow
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "3033:3033"
+    depends_on:
+      - mysql-service
+      - eureka-service
+    restart: always
+
+  kanban-service:
+    container_name: kanban-service
+    build: kanban/
+    networks:
+      - workflow
+    ports:
+      - "8007:8007"
+    links:
+      - rabbitmq
+    environment:
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=5672
+      - SPRING_RABBITMQ_USERNAME=guest
+      - SPRING_RABBITMQ_PASSWORD=guest
+    depends_on:
+      - mongo-service
+      - rabbitmq
+      - eureka-service
+    restart: always
+
+  notification-service:
+    container_name: notification-service
+    build: notification/
+    networks:
+      - workflow
+    ports:
+      - "8090:8090"
+    links:
+      - rabbitmq
+    environment:
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=5672
+      - SPRING_RABBITMQ_USERNAME=guest
+      - SPRING_RABBITMQ_PASSWORD=guest
+    depends_on:
+      - mongo-service
+      - rabbitmq
+      - eureka-service
+    restart: always
+
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:3-management
+    hostname: rabbitmq
+    ports:
+      - "5673:5672"
+      - "15673:15672"
     environment:
       - RABBITMQ_DEFAULT_USER=guest
       - RABBITMQ_DEFAULT_PASS=guest
